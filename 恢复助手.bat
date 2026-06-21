@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 set PYTHON_CMD=C:\Users\PC-HOME\AppData\Local\Programs\Python\Python312\python.exe
 echo ================================================
 echo    Codex Recovery Assistant
