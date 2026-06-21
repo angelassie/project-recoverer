@@ -1,0 +1,79 @@
+﻿import pathlib
+from datetime import datetime
+
+
+class MemorySync:
+    def __init__(self, project_root: str):
+        self.project_root = pathlib.Path(project_root)
+        self.memory_dir = self.project_root / "记忆体"
+
+    def append_log(self, timestamp: str, title: str, details: list):
+        log_file = self.memory_dir / "对话记录.md"
+        if not log_file.exists():
+            log_file.write_text("# Project Memory Dialogue Logs\n\n", encoding="utf-8")
+
+        content = log_file.read_text(encoding="utf-8")
+        entry = f"\n### {timestamp} - {title}\n"
+        for d in details:
+            entry += f"- {d}\n"
+
+        footer = "*Continue updating this file*"
+        if footer in content:
+            content = content.replace(footer, entry + "\n" + footer)
+        else:
+            content += entry
+
+        log_file.write_text(content, encoding="utf-8")
+
+    def update_status(self, completed_tasks: list = None, in_progress_tasks: list = None, next_steps: list = None):
+        status_file = self.memory_dir / "状态.md"
+        if not status_file.exists():
+            return
+
+        content = status_file.read_text(encoding="utf-8")
+
+        if completed_tasks:
+            for task in completed_tasks:
+                marker = "- [ ] " + task
+                if marker in content:
+                    content = content.replace(marker, "- [x] " + task)
+
+        if in_progress_tasks:
+            for task in in_progress_tasks:
+                marker = "- [ ] " + task
+                if marker in content:
+                    content = content.replace(marker, "- [>] " + task)
+
+        if next_steps:
+            lines = content.split("\n")
+            new_lines = []
+            for line in lines:
+                new_lines.append(line)
+                if line.strip() == "## Next Steps":
+                    for step in next_steps:
+                        new_lines.append(f"- [ ] {step}")
+            content = "\n".join(new_lines)
+
+        # Update timestamp safely
+        now_str = datetime.now().strftime("%Y-%m-%d")
+        old_line = "*Last Updated: "
+        if old_line in content:
+            content = content.replace(old_line, f"*Last Updated: {now_str}*")
+        else:
+            content += f"\n\n*Last Updated: {now_str}*\n"
+
+        status_file.write_text(content, encoding="utf-8")
+
+    def mark_recovery_complete(self, error_summary: str, recovered_tasks: int, next_action: str):
+        ts = datetime.now().strftime("%H:%M")
+        self.append_log(
+            timestamp=f"{datetime.now().strftime('%Y-%m-%d')} - {ts}",
+            title="Recovery Execution Complete",
+            details=[
+                f"Error Summary: {error_summary}",
+                f"Recovered Tasks: {recovered_tasks}",
+                f"Next Action: {next_action}",
+            ],
+        )
+        self.update_status(next_steps=[next_action])
+
