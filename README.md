@@ -2,8 +2,6 @@
 
 > **A powerful tool that recovers project context when Codex conversations are interrupted by errors.**
 
-[[Demo]](https://github.com/angelassie/project-recoverer)
-
 ## Features
 
 - **Error Analysis**: Automatically detects and classifies error messages (JSON parse, syntax errors, runtime errors, etc.)
@@ -27,23 +25,32 @@ Or:
 
 ### Method 2: Run from Command Line
 
-`powershell
-# Navigate to your project folder
-cd F:\codex\YourProject
+First, clone or download this repository:
 
-# Run the recovery assistant
-python "F:\codex\Project002_CodexMonitor\core\recoverer.py"
+`ash
+git clone https://github.com/angelassie/project-recoverer.git
+cd project-recoverer
+`
+
+Then run from your project folder:
+
+`powershell
+# Go to your project folder
+cd /path/to/your/project
+
+# Run the recovery assistant (adjust the path to where you cloned this repo)
+python /path/to/project-recoverer/core/recoverer.py
 `
 
 With an error message:
 
 `powershell
-python "F:\codex\Project002_CodexMonitor\core\recoverer.py" "F:\codex\YourProject" "Your error message here"
+python /path/to/project-recoverer/core/recoverer.py "/path/to/your/project" "Your error message here"
 `
 
 ### Method 3: Use the Batch File
 
-Double-click 恢复助手.bat in any Codex project folder.
+Copy 恢复助手.bat into any Codex project folder, then double-click it.
 
 ## Project Structure
 
