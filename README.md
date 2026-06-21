@@ -1,11 +1,11 @@
-﻿# Codex Project Recovery Assistant
+# Codex Project Recovery Assistant
 
 > **A powerful tool that recovers project context when Codex conversations are interrupted by errors.**
 
 ## Features
 
 - **Error Analysis**: Automatically detects and classifies error messages (JSON parse, syntax errors, runtime errors, etc.)
-- **Memory Recovery**: Loads and repairs project memory (璁板繂浣? files
+- **Memory Recovery**: Loads and repairs project memory files
 - **Task Tracking**: Identifies completed and pending tasks from status.md
 - **Context Reconstruction**: Scans project structure and rebuilds understanding
 - **Smart Suggestions**: Generates actionable next-step recommendations
@@ -50,7 +50,7 @@ python /path/to/project-recoverer/core/recoverer.py /path/to/your/project Your_e
 
 ### Method 3: Use the Batch File
 
-Copy 鎭㈠鍔╂墜.bat into any Codex project folder, then double-click it.
+Copy `恢复助手.bat` into any Codex project folder, then double-click it.
 
 ## Project Structure
 
@@ -64,37 +64,37 @@ project-recoverer/
 |   +-- memory_sync.py       # Automatic memory status updates
 |   +-- recoverer.py         # Main coordinator
 |   +-- _extend_patterns.py  # Extended error patterns
-+-- 璁板繂浣?                   # Project memory (per project)
-|   +-- 绱㈠紩.md               # Project overview
-|   +-- 鐘舵€?md               # Task checklist
-|   +-- 绾﹀畾.md               # Development rules
-|   +-- 瀵硅瘽璁板綍.md           # Conversation log
++-- memory/                   # Project memory (per project)
+|   +-- index.md              # Project overview
+|   +-- status.md             # Task checklist
+|   +-- conventions.md        # Development rules
+|   +-- conversation_log.md   # Conversation log
 +-- outputs/                 # Generated recovery reports
-+-- 鎭㈠鍔╂墜.bat               # Quick launcher (Windows)
++-- 恢复助手.bat               # Quick launcher
 +-- README.md                # This file
 ```
 
 ## How It Works
 
-1. **Check Memory** - Verifies 璁板繂浣?folder exists; initializes from template if missing
+1. **Check Memory** - Verifies `memory/` folder exists; initializes from template if missing
 2. **Load Memory** - Reads all memory files (index, status, conventions, logs)
 3. **Analyze Errors** - Categorizes error severity and type
 4. **Scan Project** - Counts and catalogs project files
 5. **Find Tasks** - Identifies incomplete tasks from status.md checkboxes
 6. **Generate Report** - Saves recovery summary to outputs/recovery_report_*.json
 
-## Memory Files (璁板繂浣?
+## Memory Files
 
-Each project uses a 璁板繂浣?folder to track state:
+Each project uses a `memory/` folder to track state:
 
 | File | Purpose |
 |------|---------|
-| 绱㈠紩.md | Project overview and file structure |
-| 鐘舵€?md | Task checklist with [x] completed / [ ] pending |
-| 绾﹀畾.md | Development rules and coding conventions |
-| 瀵硅瘽璁板綍.md | Chronological log of Codex conversations |
+| `index.md` | Project overview and file structure |
+| `status.md` | Task checklist with [x] completed / [ ] pending |
+| `conventions.md` | Development rules and coding conventions |
+| `conversation_log.md` | Chronological log of Codex conversations |
 
-**Tip:** Keep 鐘舵€?md updated with [x] for completed tasks to get accurate recovery suggestions.
+**Tip:** Keep `status.md` updated with `[x]` for completed tasks to get accurate recovery suggestions.
 
 ## Supported Error Types
 
@@ -114,7 +114,7 @@ Each project uses a 璁板繂浣?folder to track state:
 
 ## Output
 
-Recovery reports are saved to: 椤圭洰璺緞/outputs/recovery_report_YYYYMMDD_HHMMSS.json
+Recovery reports are saved to: `<project_path>/outputs/recovery_report_YYYYMMDD_HHMMSS.json`
 
 Reports include:
 - Error summary and classification
@@ -126,8 +126,8 @@ Reports include:
 
 | Problem | Solution |
 |---------|----------|
-| Memory not found | Run with --init-memory flag or double-click 鎭㈠鍔╂墜.bat |
-| No tasks shown | Check that 鐘舵€?md has - [ ] task entries |
+| Memory not found | Run with --init-memory flag or double-click `恢复助手.bat` |
+| No tasks shown | Check that `status.md` has `- [ ] task` entries |
 | Error analysis empty | Ensure error text is passed as second argument |
 | Python not found | Install Python 3.12+ or use full path to python.exe |
 
