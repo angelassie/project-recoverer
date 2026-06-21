@@ -11,7 +11,7 @@ A helper tool that recovers project context when Codex conversations are interru
 
 ## Project Structure
 
-`
+```
 Project002_CodexMonitor/
 ├── core/                    # Core modules
 │   ├── analyzer.py          # Error pattern detection and classification
@@ -19,27 +19,27 @@ Project002_CodexMonitor/
 │   ├── memory_sync.py       # Automatic memory status updates
 │   └── recoverer.py         # Main entry point, coordinates all modules
 ├── memory/                  # Project memory (Chinese filenames)
-│   ├── 索引.md              # Index overview
-│   ├── 状态.md              # Current status
-│   ├── 约定.md              # Conventions and standards
-│   └── 对话记录.md          # Dialogue logs
+│   ├── index.md              # Index overview
+│   ├── status.md              # Current status
+│   ├── conventions.md              # Conventions and standards
+│   └── dialogue_logs.md          # Dialogue logs
 ├── outputs/                 # Generated recovery reports
 └── README.md                # This file
-`
+```
 
 ## Usage
 
 Run the recovery assistant from the project root:
 
-`ash
+```bash
 py core/recoverer.py <project_root> <error_text>
-`
+```
 
 Example:
 
-`ash
+```bash
 py core/recoverer.py F:/codex/Project002_CodexMonitor "JSON parse error occurred"
-`
+```
 
 ## Requirements
 
@@ -57,4 +57,4 @@ py core/recoverer.py F:/codex/Project002_CodexMonitor "JSON parse error occurred
 
 ## Known Issues
 
-- JSON parse errors occur when using pply_patch on files with Chinese content. Use shell_command + Out-File instead.
+- JSON parse errors occur when using apply_patch on files with Chinese content. Use shell_command + Out-File instead.
