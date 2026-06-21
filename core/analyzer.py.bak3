@@ -1,0 +1,155 @@
+﻿"""
+Error Analysis Module - analyzer
+Extracts and categorizes error messages from conversation interruptions.
+Extended with additional common error patterns.
+"""
+import re
+from dataclasses import dataclass
+from typing import List
+
+
+@dataclass
+class ErrorInfo:
+    raw_text: str
+    error_type: str
+    severity: str
+    module: str = ""
+    suggestion: str = ""
+
+
+_ERROR_PATTERNS = [
+    ,
+]
+
+ = {
+    "json_parse_error": "JSON Parse Error",
+    "timeout_error": "Command Timeout",
+    "file_not_found": "File Path Error",
+    "permission_denied": "Permission Error",
+    "api_error": "API Call Error",
+    "tool_failed": "Tool Invocation Failed",
+    "memory_error": "Out of Memory",
+    "network_error": "Network Error",
+    "rust_compile_error": "Rust Compilation Error",
+    "python_syntax_error": "Python Syntax Error",
+    "unicode_encode_error": "Encoding Error",
+    "module_import_error": "Module Import Error",
+    "power_shell_error": "PowerShell Command Error",
+    # Extended names
+    "tool_bad_request": "Tool Not Found",
+    "param_validation_error": "Parameter Validation Error",
+    "rate_limit_error": "Rate Limit Exceeded",
+    "authentication_error": "Authentication Error",
+    "resource_not_found": "Resource Not Found",
+    "server_error": "Server Error",
+    "schema_error": "Schema Validation Error",
+    "thread_management_error": "Thread Management Error",
+    "file_encoding_error": "File Encoding Error",
+    "path_resolution_error": "Path Resolution Error",
+    "empty_response": "Empty Response",
+    "markdown_parse_error": "Markdown Parse Error",
+    "imagegen_error": "Image Generation Error",
+    "mcp_server_error": "MCP Server Error",
+    "sandbox_error": "Sandbox Restriction",
+    "model_quota_error": "Model Quota Error",
+    "context_window_error": "Context Window Exceeded",
+    "api_curated_error": "API Curated Error",
+    "automation_error": "Automation Error",
+    "file_system_error": "File System Error",
+    "process_killed": "Process Killed",
+    "dependency_error": "Dependency Error",
+    "config_error": "Configuration Error",
+    "conversion_error": "Conversion Error",
+    "unknown": "Unknown Error",
+}
+
+_ERROR_SUGGESTIONS = {
+    "json_parse_error": "Check JSON format, ensure double quotes are used. For Chinese content, use shell_command + Out-File instead of apply_patch.",
+    "timeout_error": "Command execution took too long. Consider splitting the task or increasing the timeout limit.",
+    "file_not_found": "Check if the file path is correct and confirm the target file exists.",
+    "permission_denied": "Check file/directory access permissions, try running as administrator.",
+    "api_error": "Check API call frequency, wait for rate limit to reset before retrying.",
+    "tool_failed": "Check if the tool name and parameters are correct, confirm the tool is available.",
+    "memory_error": "Reduce the amount of data processed per operation, or increase system memory.",
+    "network_error": "Check network connection, confirm the target address is reachable.",
+    "rust_compile_error": "Rust compilation error detected. Check import paths, function signatures, and struct field visibility.",
+    "python_syntax_error": "Python syntax or type error. Check code structure and variable names.",
+    "unicode_encode_error": "Encoding issue. Ensure consistent UTF-8 encoding throughout the project.",
+    "module_import_error": "Missing module. Check pip install or virtual environment configuration.",
+    "power_shell_error": "PowerShell command parsing error. Check command syntax and quote usage.",
+    # Extended suggestions
+    "tool_bad_request": "Check tool name spelling and availability.",
+    "param_validation_error": "Check parameter types and required fields.",
+    "rate_limit_error": "API rate limit exceeded. Wait and retry after cooldown.",
+    "authentication_error": "Authentication failed. Check API keys or tokens.",
+    "resource_not_found": "Requested resource not found. Check URL or resource ID.",
+    "server_error": "Server-side error. Retry later or contact provider.",
+    "schema_error": "Data schema validation failed. Check data structure.",
+    "thread_management_error": "Thread or session management error. Check conversation thread status.",
+    "file_encoding_error": "File encoding issue. Ensure consistent UTF-8 encoding.",
+    "path_resolution_error": "Path resolution error. Check for invalid characters or long paths.",
+    "empty_response": "Received empty response. Check API endpoint.",
+    "markdown_parse_error": "Markdown parsing failed. Check for malformed syntax.",
+    "imagegen_error": "Image generation failed. Check model availability.",
+    "mcp_server_error": "MCP server connection error. Check server status.",
+    "sandbox_error": "Sandbox security restriction. Check required permissions.",
+    "model_quota_error": "API quota or billing issue. Check account balance.",
+    "context_window_error": "Context window limit reached. Consider summarizing or splitting task.",
+    "api_curated_error": "API curated service error. Check plugin availability.",
+    "automation_error": "Automation or scheduling error. Check cron jobs.",
+    "file_system_error": "File system error. Check disk space.",
+    "process_killed": "Process killed unexpectedly. Check system resources.",
+    "dependency_error": "Dependency resolution error. Check package versions.",
+    "config_error": "Configuration error. Check settings and environment variables.",
+    "conversion_error": "Data conversion error. Check format compatibility.",
+    # Additional suggestions
+    "browser_error": "Browser automation error. Check Playwright installation and browser availability.",
+    "image_processing_error": "Image processing error. Check image format and file integrity.",
+    "subprocess_error": "Subprocess execution error. Check command arguments and exit codes.",
+    "database_error": "Database error detected. Check connection pool and query syntax.",
+    "websocket_error": "WebSocket connection error. Check server endpoint and protocol version.",
+    "ssl_certificate_error": "SSL/TLS certificate error. Check certificate validity and hostname match.",
+    "http_status_error": "HTTP error status code received. Check request URL and server response.",
+    "regex_error": "Regular expression error. Check regex syntax and escape sequences.",
+    "zip_archive_error": "Archive extraction error. Check file integrity and format.",
+    "email_send_error": "Email sending error. Check SMTP settings and credentials.",
+    "docker_error": "Docker/container error. Check Docker daemon status and port availability.",
+    "git_error": "Git operation error. Check repository status and remote configuration.",
+    "encoding_bom_error": "BOM encoding issue. Check file encoding and byte order mark presence.",
+    "yaml_parse_error": "YAML parsing error. Check indentation and syntax in YAML files.",
+    "csv_parse_error": "CSV parsing error. Check column count and delimiter settings.",
+    "grpc_error": "gRPC communication error. Check server status and channel configuration.",
+    "oauth_error": "OAuth authentication error. Check client credentials and redirect URI.",
+    "clipboard_error": "Clipboard operation error. Check clipboard access permissions.",
+    "keyboard_interrupt": "Operation cancelled by user. No error, just interrupted manually.",
+    "unknown": "Unable to automatically identify error type, please manually check the error message.",
+}
+
+
+class ErrorAnalyzer:
+    def __init__(self):
+        self._compiled = []
+        for p in _ERROR_PATTERNS:
+            self._compiled.append({
+                "code": p["name"],
+                "regex": re.compile(p["pattern"], re.IGNORECASE),
+                "severity": p["severity"],
+                "suggestion": p["suggestion"],
+            })
+
+    def analyze(self, text):
+        errors = []
+        if not text or not text.strip():
+            return errors
+        lines = text.split("\n")
+        seen_patterns = set()
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            matched = False
+            for pat in self._compiled:
+                if pat["regex"].search(line):
+                    errors.append(ErrorInfo(
+                        raw_text=line,
+                        error_type=

@@ -1,0 +1,206 @@
+﻿"""
+Error Analysis Module - analyzer
+Extracts and categorizes error messages from conversation interruptions.
+Extended with additional common error patterns.
+"""
+import re
+from dataclasses import dataclass
+from typing import List
+
+
+@dataclass
+class ErrorInfo:
+    raw_text: str
+    error_type: str
+    severity: str
+    module: str = ""
+    suggestion: str = ""
+
+
+_ERROR_PATTERNS = [
+    {"name": "json_parse_error", "pattern": r"(BadRequestError|json.decoder.JSONDecodeError|Expecting property name)", "severity": "critical", "suggestion": "Check JSON format, use double quotes. Use shell_command + Out-File for Chinese content."},
+    {"name": "timeout_error", "pattern": r"(TimeoutError|timed out|command .* exceeded time)", "severity": "warning", "suggestion": "Command took too long. Consider splitting the task."},
+    {"name": "file_not_found", "pattern": r"(FileNotFoundError|No such file|path not found)", "severity": "critical", "suggestion": "Check file path, confirm the target file exists."},
+    {"name": "permission_denied", "pattern": r"(PermissionError|AccessDenied|access denied)", "severity": "critical", "suggestion": "Check file/directory permissions, try running as admin."},
+    {"name": "api_error", "pattern": r"(APIError|api_error|rate limit|too many requests)", "severity": "warning", "suggestion": "Check API call frequency, retry after rate limit resets."},
+    {"name": "tool_failed", "pattern": r"(tool.*error|tool.*failed|unsupported.*tool)", "severity": "warning", "suggestion": "Check tool name and parameters, confirm tool is available."},
+    {"name": "memory_error", "pattern": r"(MemoryError|out of memory|OOM)", "severity": "critical", "suggestion": "Reduce data size per operation or increase system memory."},
+    {"name": "network_error", "pattern": r"(ConnectionError|URLError|requests.exceptions|network.*error)", "severity": "warning", "suggestion": "Check network connection, confirm target address is reachable."},
+    {"name": "rust_compile_error", "pattern": r"(error\[E\d+\]|unresolved import|cannot find|this function takes.*arguments but.*supplied|mismatched types|field.*is private|no .* in .*)", "severity": "critical", "suggestion": "Rust compilation error detected. Check import paths, function signatures, and struct field visibility."},
+    {"name": "python_syntax_error", "pattern": r"(SyntaxError|IndentationError|TypeError.*expected.*got|NameError.*not defined)", "severity": "critical", "suggestion": "Python syntax or type error. Check code structure and variable names."},
+    {"name": "unicode_encode_error", "pattern": r"(UnicodeEncodeError|UnicodeDecodeError|codec.*can't encode)", "severity": "warning", "suggestion": "Encoding issue detected. Ensure consistent UTF-8 encoding throughout the project."},
+    {"name": "module_import_error", "pattern": r"(ModuleNotFoundError|ImportError|No module named|cannot import)", "severity": "critical", "suggestion": "Missing module. Check pip install or virtual environment setup."},
+    {"name": "power_shell_error", "pattern": r"(is not recognized as the name of a cmdlet|CommandNotFoundException|ParserError)", "severity": "warning", "suggestion": "PowerShell command parsing error. Check command syntax and quotes."},
+    # Extended patterns added by improvement
+    {"name": "tool_bad_request", "pattern": r"(tool.*not found|unsupported.*tool|invalid.*tool.*name|tool.*does.*not exist)", "severity": "warning", "suggestion": "Check tool name spelling and availability."},
+    {"name": "param_validation_error", "pattern": r"(ValidationError|invalid parameter|missing required parameter|parameter.*type mismatch)", "severity": "warning", "suggestion": "Check parameter types and required fields."},
+    {"name": "rate_limit_error", "pattern": r"(rate limit|too many requests|429|throttl)", "severity": "warning", "suggestion": "API rate limit exceeded. Wait and retry after cooldown."},
+    {"name": "authentication_error", "pattern": r"(auth.*fail|unauthorized|401|token.*expired|invalid API key)", "severity": "critical", "suggestion": "Authentication failed. Check API keys or tokens."},
+    {"name": "resource_not_found", "pattern": r"(404|resource.*not found|endpoint.*not found)", "severity": "warning", "suggestion": "Requested resource not found. Check URL or resource ID."},
+    {"name": "server_error", "pattern": r"(500|Internal Server Error|server error|unavailable)", "severity": "critical", "suggestion": "Server-side error. Retry later or contact provider."},
+    {"name": "schema_error", "pattern": r"(schema.*invalid|invalid schema|validation.*failed.*schema)", "severity": "warning", "suggestion": "Data schema validation failed. Check data structure."},
+    {"name": "thread_management_error", "pattern": r"(thread.*not found|conversation.*not found|session.*expired|context.*limit exceeded)", "severity": "warning", "suggestion": "Thread or session management error. Check conversation thread status."},
+    {"name": "file_encoding_error", "pattern": r"(decode.*error|encode.*error|invalid.*byte|surrogate.*escape)", "severity": "warning", "suggestion": "File encoding issue. Ensure consistent UTF-8 encoding."},
+    {"name": "path_resolution_error", "pattern": r"(path.*too long|illegal.*character.*path|invalid.*path.*character)", "severity": "warning", "suggestion": "Path resolution error. Check for invalid characters or long paths."},
+    {"name": "empty_response", "pattern": r"(empty response|null response|no data returned|response.*is null)", "severity": "info", "suggestion": "Received empty response. Check API endpoint."},
+    {"name": "markdown_parse_error", "pattern": r"(markdown.*parse.*error|Failed to parse markdown|CommonMark.*error)", "severity": "warning", "suggestion": "Markdown parsing failed. Check for malformed syntax."},
+    {"name": "imagegen_error", "pattern": r"(image.*generat.*fail|diffus.*error|stable.*diffusion|latent.*error)", "severity": "warning", "suggestion": "Image generation failed. Check model availability."},
+    {"name": "mcp_server_error", "pattern": r"(MCP.*error|server.*connection.*refused|stdio.*transport|JSON-RPC.*error)", "severity": "warning", "suggestion": "MCP server connection error. Check server status."},
+    {"name": "sandbox_error", "pattern": r"(sandbox.*denied|permission.*denied.*sandbox|security.*policy|restricted.*operation)", "severity": "warning", "suggestion": "Sandbox security restriction. Check required permissions."},
+    {"name": "model_quota_error", "pattern": r"(quota.*exceeded|credit.*balance|insufficient.*quota|billing.*error)", "severity": "critical", "suggestion": "API quota or billing issue. Check account balance."},
+    {"name": "context_window_error", "pattern": r"(context.*window.*exceeded|max.*tokens.*reached|context.*length.*limit|token.*limit)", "severity": "critical", "suggestion": "Context window limit reached. Consider summarizing or splitting task."},
+    {"name": "api_curated_error", "pattern": r"(api.*curated.*error|plugin.*not.*found|marketplace.*error)", "severity": "warning", "suggestion": "API curated service error. Check plugin availability."},
+    {"name": "automation_error", "pattern": r"(automation.*error|reminder.*failed|schedule.*error|cron.*job.*fail)", "severity": "warning", "suggestion": "Automation or scheduling error. Check cron jobs."},
+    {"name": "file_system_error", "pattern": r"(disk.*full|no.*space.*left|file.*system.*error|inode.*exhausted)", "severity": "critical", "suggestion": "File system error. Check disk space."},
+    {"name": "process_killed", "pattern": r"(process.*killed|SIGKILL|SIGTERM|OOM.*killer|terminated.*abnormally)", "severity": "critical", "suggestion": "Process killed unexpectedly. Check system resources."},
+    {"name": "dependency_error", "pattern": r"(dependency.*conflict|version.*mismatch|package.*not.*found|pip.*install.*fail)", "severity": "warning", "suggestion": "Dependency resolution error. Check package versions."},
+    {"name": "config_error", "pattern": r"(config.*error|configuration.*invalid|setting.*not.*found|env.*variable.*missing)", "severity": "warning", "suggestion": "Configuration error. Check settings and environment variables."},
+    {"name": "conversion_error", "pattern": r"(convert.*error|transform.*fail|serialization.*error|deserialization.*error)", "severity": "warning", "suggestion": "Data conversion error. Check format compatibility."},
+]
+
+_ERROR_NAMES = {
+    "json_parse_error": "JSON Parse Error",
+    "timeout_error": "Command Timeout",
+    "file_not_found": "File Path Error",
+    "permission_denied": "Permission Error",
+    "api_error": "API Call Error",
+    "tool_failed": "Tool Invocation Failed",
+    "memory_error": "Out of Memory",
+    "network_error": "Network Error",
+    "rust_compile_error": "Rust Compilation Error",
+    "python_syntax_error": "Python Syntax Error",
+    "unicode_encode_error": "Encoding Error",
+    "module_import_error": "Module Import Error",
+    "power_shell_error": "PowerShell Command Error",
+    # Extended names
+    "tool_bad_request": "Tool Not Found",
+    "param_validation_error": "Parameter Validation Error",
+    "rate_limit_error": "Rate Limit Exceeded",
+    "authentication_error": "Authentication Error",
+    "resource_not_found": "Resource Not Found",
+    "server_error": "Server Error",
+    "schema_error": "Schema Validation Error",
+    "thread_management_error": "Thread Management Error",
+    "file_encoding_error": "File Encoding Error",
+    "path_resolution_error": "Path Resolution Error",
+    "empty_response": "Empty Response",
+    "markdown_parse_error": "Markdown Parse Error",
+    "imagegen_error": "Image Generation Error",
+    "mcp_server_error": "MCP Server Error",
+    "sandbox_error": "Sandbox Restriction",
+    "model_quota_error": "Model Quota Error",
+    "context_window_error": "Context Window Exceeded",
+    "api_curated_error": "API Curated Error",
+    "automation_error": "Automation Error",
+    "file_system_error": "File System Error",
+    "process_killed": "Process Killed",
+    "dependency_error": "Dependency Error",
+    "config_error": "Configuration Error",
+    "conversion_error": "Conversion Error",
+    "unknown": "Unknown Error",
+}
+
+_ERROR_SUGGESTIONS = {
+    "json_parse_error": "Check JSON format, ensure double quotes are used. For Chinese content, use shell_command + Out-File instead of apply_patch.",
+    "timeout_error": "Command execution took too long. Consider splitting the task or increasing the timeout limit.",
+    "file_not_found": "Check if the file path is correct and confirm the target file exists.",
+    "permission_denied": "Check file/directory access permissions, try running as administrator.",
+    "api_error": "Check API call frequency, wait for rate limit to reset before retrying.",
+    "tool_failed": "Check if the tool name and parameters are correct, confirm the tool is available.",
+    "memory_error": "Reduce the amount of data processed per operation, or increase system memory.",
+    "network_error": "Check network connection, confirm the target address is reachable.",
+    "rust_compile_error": "Rust compilation error detected. Check import paths, function signatures, and struct field visibility.",
+    "python_syntax_error": "Python syntax or type error. Check code structure and variable names.",
+    "unicode_encode_error": "Encoding issue. Ensure consistent UTF-8 encoding throughout the project.",
+    "module_import_error": "Missing module. Check pip install or virtual environment configuration.",
+    "power_shell_error": "PowerShell command parsing error. Check command syntax and quote usage.",
+    # Extended suggestions
+    "tool_bad_request": "Check tool name spelling and availability.",
+    "param_validation_error": "Check parameter types and required fields.",
+    "rate_limit_error": "API rate limit exceeded. Wait and retry after cooldown.",
+    "authentication_error": "Authentication failed. Check API keys or tokens.",
+    "resource_not_found": "Requested resource not found. Check URL or resource ID.",
+    "server_error": "Server-side error. Retry later or contact provider.",
+    "schema_error": "Data schema validation failed. Check data structure.",
+    "thread_management_error": "Thread or session management error. Check conversation thread status.",
+    "file_encoding_error": "File encoding issue. Ensure consistent UTF-8 encoding.",
+    "path_resolution_error": "Path resolution error. Check for invalid characters or long paths.",
+    "empty_response": "Received empty response. Check API endpoint.",
+    "markdown_parse_error": "Markdown parsing failed. Check for malformed syntax.",
+    "imagegen_error": "Image generation failed. Check model availability.",
+    "mcp_server_error": "MCP server connection error. Check server status.",
+    "sandbox_error": "Sandbox security restriction. Check required permissions.",
+    "model_quota_error": "API quota or billing issue. Check account balance.",
+    "context_window_error": "Context window limit reached. Consider summarizing or splitting task.",
+    "api_curated_error": "API curated service error. Check plugin availability.",
+    "automation_error": "Automation or scheduling error. Check cron jobs.",
+    "file_system_error": "File system error. Check disk space.",
+    "process_killed": "Process killed unexpectedly. Check system resources.",
+    "dependency_error": "Dependency resolution error. Check package versions.",
+    "config_error": "Configuration error. Check settings and environment variables.",
+    "conversion_error": "Data conversion error. Check format compatibility.",
+    "unknown": "Unable to automatically identify error type, please manually check the error message.",
+}
+
+
+class ErrorAnalyzer:
+    def __init__(self):
+        self._compiled = []
+        for p in _ERROR_PATTERNS:
+            self._compiled.append({
+                "code": p["name"],
+                "regex": re.compile(p["pattern"], re.IGNORECASE),
+                "severity": p["severity"],
+                "suggestion": p["suggestion"],
+            })
+
+    def analyze(self, text):
+        errors = []
+        if not text or not text.strip():
+            return errors
+        lines = text.split("\n")
+        seen_patterns = set()
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            matched = False
+            for pat in self._compiled:
+                if pat["regex"].search(line):
+                    errors.append(ErrorInfo(
+                        raw_text=line,
+                        error_type=_ERROR_NAMES.get(pat["code"], pat["code"]),
+                        severity=pat["severity"],
+                        suggestion=_ERROR_SUGGESTIONS.get(pat["code"], ""),
+                    ))
+                    seen_patterns.add(pat["code"])
+                    matched = True
+                    break
+            if not matched:
+                errors.append(ErrorInfo(
+                    raw_text=line,
+                    error_type=_ERROR_NAMES.get("unknown", "Unknown Error"),
+                    severity="info",
+                    suggestion=_ERROR_SUGGESTIONS.get("unknown", ""),
+                ))
+        return errors
+
+    def classify(self, errors):
+        result = {
+            "total": len(errors),
+            "critical": [e for e in errors if e.severity == "critical"],
+            "warning": [e for e in errors if e.severity == "warning"],
+            "info": [e for e in errors if e.severity == "info"],
+            "summary": "",
+        }
+        if result["total"] == 0:
+            result["summary"] = "No error messages found. The conversation may have been interrupted for non-error reasons."
+        elif result["critical"]:
+            types = ", ".join(e.error_type for e in result["critical"])
+            result["summary"] = "Found %d critical errors: %s" % (len(result["critical"]), types)
+        elif result["warning"]:
+            types = ", ".join(e.error_type for e in result["warning"])
+            result["summary"] = "Found %d warnings: %s" % (len(result["warning"]), types)
+        else:
+            result["summary"] = "Only general information found, no errors."
+        return result

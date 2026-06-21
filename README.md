@@ -1,4 +1,4 @@
-﻿# Codex Project Recovery Assistant
+# Codex Project Recovery Assistant
 
 A helper tool that recovers project context when Codex conversations are interrupted by errors.
 
@@ -13,18 +13,18 @@ A helper tool that recovers project context when Codex conversations are interru
 
 ```
 Project002_CodexMonitor/
-├── core/                    # Core modules
-│   ├── analyzer.py          # Error pattern detection and classification
-│   ├── context_builder.py   # Context reconstruction from memory files
-│   ├── memory_sync.py       # Automatic memory status updates
-│   └── recoverer.py         # Main entry point, coordinates all modules
-├── memory/                  # Project memory (Chinese filenames)
-│   ├── index.md              # Index overview
-│   ├── status.md              # Current status
-│   ├── conventions.md              # Conventions and standards
-│   └── dialogue_logs.md          # Dialogue logs
-├── outputs/                 # Generated recovery reports
-└── README.md                # This file
++-- core/                    # Core modules
+|   +-- analyzer.py          # Error pattern detection and classification
+|   +-- context_builder.py   # Context reconstruction from memory files
+|   +-- memory_sync.py       # Automatic memory status updates
+|   +-- recoverer.py         # Main entry point, coordinates all modules
++-- memory/                  # Project memory (Chinese filenames)
+|   +-- index.md              # Index overview
+|   +-- status.md              # Current status
+|   +-- conventions.md              # Conventions and standards
+|   +-- dialogue_logs.md          # Dialogue logs
++-- outputs/                 # Generated recovery reports
++-- README.md                # This file
 ```
 
 ## Usage
