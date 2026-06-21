@@ -1,4 +1,4 @@
-﻿import pathlib
+import pathlib
 from datetime import datetime
 
 
@@ -54,7 +54,7 @@ class MemorySync:
                         new_lines.append(f"- [ ] {step}")
             content = "\n".join(new_lines)
 
-        # Update timestamp safely
+        # Update timestamp safely — replace the entire last-updated line
         now_str = datetime.now().strftime("%Y-%m-%d")
         import re
         pattern = r'\*Last Updated: [^\*]*\*'
