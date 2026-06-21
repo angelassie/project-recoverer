@@ -29,11 +29,15 @@ Project002_CodexMonitor/
 
 ## Usage
 
-`ash
-# Run the recovery assistant
-py core/recoverer.py <project_root> <error_text>
+Run the recovery assistant from the project root:
 
-# Example
+`ash
+py core/recoverer.py <project_root> <error_text>
+`
+
+Example:
+
+`ash
 py core/recoverer.py F:/codex/Project002_CodexMonitor "JSON parse error occurred"
 `
 
